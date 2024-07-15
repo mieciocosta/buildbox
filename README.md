@@ -1,14 +1,13 @@
-# Wikipedia E2E Test Automation
+# QA Challenge
 
 ## Descrição
 
-Este projeto contém testes de automação E2E para a página da Wikipedia, utilizando Cypress e integração com Percy para testes de regressão visual. O objetivo é testar a existência dos principais elementos da página principal e validar a busca por "Brasil".
+Este projeto contém testes de automação E2E para a página de cadastro, utilizando Cypress e Cucumber para definir os cenários de teste. O objetivo é testar o cadastro de usuário com diferentes cenários de dados.
 
 ## Pré-requisitos
 
-- Node.js (versão 16)
+- Node.js (versão 16 ou superior)
 - npm (gerenciador de pacotes Node)
-- Conta no Percy (para testes de regressão visual)
 
 ## Instalação
 
@@ -16,7 +15,7 @@ Este projeto contém testes de automação E2E para a página da Wikipedia, util
 
 ```bash
 git clone <URL_DO_REPOSITORIO>
-cd wikipedia
+cd qa-challenge
 ```
 
 2. Instale as dependências do projeto:
@@ -27,27 +26,14 @@ npm install
 
 ## Configuração
 
-1. Adicione o token do Percy nas variáveis de ambiente. No GitHub Actions, adicione um segredo chamado `PERCY_TOKEN` com o valor do seu token do Percy.
-
-2. Crie o arquivo `cypress.env.json` na raiz do projeto com o seguinte conteúdo:
-
-```json
-{
-  "graphqlUrl": "https://graphqlzero.almansi.me/api",
-  "USER_ID": "1",
-  "USERNAME": "Bret",
-  "EMAIL": "Sincere@april.biz",
-  "LATITUDE": -37.3159,
-  "LONGITUDE": 81.1496
-}
-```
+Nenhuma configuração adicional é necessária.
 
 ## Estrutura do Projeto
 
 - `cypress/e2e/features`: Contém os arquivos `.feature` que definem os cenários de teste.
 - `cypress/e2e/features/step_definitions`: Contém os arquivos `.js` que implementam os passos dos cenários.
-- `cypress/pages`: Contém a classe `WikipediaPage` que encapsula as interações com a página da Wikipedia.
-- `cypress/support`: Contém arquivos de suporte e utilitários, incluindo queries GraphQL.
+- `cypress/pages`: Contém a classe `CadastroPage` que encapsula as interações com a página de cadastro.
+- `cypress/support`: Contém arquivos de suporte e utilitários.
 
 ## Execução dos Testes
 
@@ -63,126 +49,243 @@ npm run cypress
 npm test
 ```
 
-### Executar os testes com Percy
+## Formatação de Código
+
+Para garantir a consistência do código, utilize o Prettier:
 
 ```bash
-npm run test-percy
+npm run prettier
 ```
 
-## Integração com GitHub Actions
+## Testes de Cadastro
 
-O workflow do GitHub Actions está configurado para executar os testes automaticamente em cada push para a branch `main`. Os artefatos (vídeos e screenshots) serão carregados após a execução dos testes.
-
-### Configuração do GitHub Actions
-
-Crie um arquivo `.github/workflows/cypress.yml` com o seguinte conteúdo:
-
-```yaml
-name: Cypress Tests
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
-jobs:
-  cypress-run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run Cypress tests
-        run: npm run test-percy
-
-      - name: Upload Cypress Videos
-        uses: actions/upload-artifact@v2
-        with:
-          name: cypress-videos
-          path: cypress/videos
-
-      - name: Upload Cypress Screenshots
-        uses: actions/upload-artifact@v2
-        with:
-          name: cypress-screenshots
-          path: cypress/screenshots
-```
-
-## Teste de Busca na Wikipedia
-
-### Arquivo de Teste: `wikipedia.feature`
+### Arquivo de Teste: `cadastro.feature`
 
 ```gherkin
-Feature: Wikipedia Search
+Feature: Cadastro de Usuário
 
-  Scenario: Search Wikipedia
-    Given I open the Wikipedia home page
-    When I search for "Brasil"
-    Then the main content should contain "Brasil"
-    And the main sections should be visible
+  Scenario: Cadastro com dados válidos
+    Given I open the cadastro page
+    When I click on "Fazer inscrição"
+    And I fill the form with valid data
+    And I fill the address form
+
+  Scenario: Cadastro com email inválido
+    Given I open the cadastro page
+    When I click on "Fazer inscrição"
+    And I fill the form with an invalid email
+
+
 ```
 
-### Arquivo de Definições de Passos: `wikipedia_steps.cy.js`
+### Arquivo de Definições de Passos: `cadastro_steps.cy.js`
 
 ```javascript
-import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import WikipediaPage from '../../../pages/WikipediaPage';
+import { CadastroPage } from '../../../pages/CadastroPage';
+const gerador = require('gerador-validador-cpf');
 
-const wikipediaPage = new WikipediaPage();
+const cadastroPage = new CadastroPage();
 
-Given('I open the Wikipedia home page', () => {
-  wikipediaPage.visit();
+Given('I open the cadastro page', () => {
+  cadastroPage.visit();
 });
 
-When('I search for {string}', (term) => {
-  wikipediaPage.search(term);
+When('I click on "Fazer inscrição"', () => {
+  cy.wait(2000);
+  cadastroPage.clickEnrollButton();
 });
 
-Then('the main content should contain {string}', (term) => {
-  wikipediaPage.verifyMainContent(term);
+When('I fill the form with valid data', () => {
+  const cpfValido = gerador.generate();
+
+  cadastroPage.fillForm({
+    firstName: 'John',
+    lastName: 'Doe',
+    birthDate: '01/01/1990',
+    cpf: cpfValido,
+    email: 'john.doe@example.com',
+    confirmEmail: 'john.doe@example.com',
+    password: 'Password123!',
+    confirmPassword: 'Password123!',
+    proficiency: 'Intermediate',
+  });
+  cadastroPage.clickNextButton();
 });
 
-Then('the main sections should be visible', () => {
-  wikipediaPage.verifyMainSections();
+When('I fill the address form', () => {
+  cadastroPage.fillAddressForm({
+    cep: '65110000',
+    neighborhood: 'Centro',
+    street: 'Rua Principal',
+    number: '123',
+    complement: 'Apto 101',
+  });
 });
+
+When('I fill the form with an invalid email', () => {
+  const cpfValido = gerador.generate();
+
+  cadastroPage.fillForm({
+    firstName: 'John',
+    lastName: 'Doe',
+    birthDate: '01/01/1990',
+    cpf: cpfValido,
+    email: 'invalid-email',
+    confirmEmail: 'invalid-email',
+    password: 'Password123!',
+    confirmPassword: 'Password123!',
+    proficiency: 'Intermediate',
+  });
+  cadastroPage.clickNextButton();
+});
+
+When('I submit the form without filling required fields', () => {
+  cadastroPage.clickNextButton();
+});
+
+When('I partially fill the form and clear it', () => {
+  cy.get('[data-cy="input-signup-personal-data-firstName"]')
+    .should('be.visible')
+    .type('abc')
+    .clear();
+  cadastroPage.clickNextButton();
+});
+
+Then(
+  'I should see error messages for required fields after clearing them',
+  () => {
+    cy.get('.input-error').should('be.visible');
+  }
+);
+
+When('I submit the form', () => {
+  cadastroPage.clickNextButton();
+});
+
+When('I click on "Fazer inscrição" again', () => {
+  cadastroPage.clickEnrollButton();
+});
+
+Then('I should see an error message for invalid email', () => {});
+
+Then('I should see error messages for required fields', () => {});
 ```
 
-### Arquivo de Página: `WikipediaPage.js`
+### Arquivo de Página: `CadastroPage.js`
 
 ```javascript
-class WikipediaPage {
+class CadastroPage {
   visit() {
-    cy.visit('/');
+    cy.visit('https://qastage.buildbox.one/18/cadastro');
   }
 
-  search(term) {
-    cy.get('input[name="search"]').type(term + '{enter}');
+  clickEnrollButton() {
+    cy.get('[data-cy="button-btn-enroll"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click({ force: true });
   }
 
-  verifyMainContent(term) {
-    cy.get('h1#firstHeading', { timeout: 30000 }).should('contain', term);
-    cy.percySnapshot('Main Content');
+  clickNextButton() {
+    cy.get('[data-cy="button-signup_submit_button_1"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click({ force: true });
   }
 
-  verifyMainSections() {
-    cy.get('body', { timeout: 30000 }).should('be.visible');
-    cy.get('#content', { timeout: 30000 }).should('be.visible');
-    cy.get('#firstHeading', { timeout: 30000 }).should('be.visible');
-    cy.get('.infobox', { timeout: 30000 }).should('be.visible');
-    cy.percySnapshot('Main Sections');
+  fillForm({
+    firstName,
+    lastName,
+    birthDate,
+    cpf,
+    email,
+    confirmEmail,
+    password,
+    confirmPassword,
+    proficiency,
+  }) {
+    if (firstName) {
+      cy.get('[data-cy="input-signup-personal-data-firstName"]')
+        .should('be.visible')
+        .type(firstName);
+    }
+    if (lastName) {
+      cy.get('[data-cy="input-signup-personal-data-lastName"]')
+        .should('be.visible')
+        .type(lastName);
+    }
+    if (birthDate) {
+      cy.get('[data-cy="input-signup-personal-data-birthDate"]')
+        .should('be.visible')
+        .type(birthDate);
+    }
+    if (cpf) {
+      cy.get('[data-cy="input-signup-personal-data-cpf"]')
+        .should('not.be.disabled')
+        .type(cpf);
+    }
+    if (email) {
+      cy.get('[data-cy="input-signup-personal-data-email"]')
+        .should('be.visible')
+        .type(email);
+    }
+    if (confirmEmail) {
+      cy.get('[data-cy="input-signup-personal-data-email-confirm"]')
+        .should('be.visible')
+        .type(confirmEmail);
+    }
+    if (password) {
+      cy.get('[data-cy="input-signup-personal-data-password"]')
+        .should('be.visible')
+        .type(password);
+    }
+    if (confirmPassword) {
+      cy.get('[data-cy="input-signup-personal-data-password-confirm"]')
+        .should('be.visible')
+        .type(confirmPassword);
+    }
+    if (proficiency) {
+      cy.get(
+        '.lg\\:w-7\\/12 > .form-container > div.relative > .justify-between > .whitespace-nowrap'
+      ).click();
+      cy.get(
+        `[x-init='options = [{\"key\":2,\"value\":\"Beginner\"},{\"key\":3,\"value\":\"Intermediate\"},{\"key\":4,\"value\":\"Advanced\"}]'] > span:contains("${proficiency}")`
+      ).click();
+    }
+    cy.get('[data-cy="input-signup-personal-data-lgpd"]').check();
+  }
+
+  fillAddressForm({ cep, neighborhood, street, number, complement }) {
+    if (cep) {
+      cy.get('[data-cy="input-signup-address-cep"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .type(cep);
+    }
+    if (neighborhood) {
+      cy.get('[data-cy="input-signup-address-neighborhood"]')
+        .should('be.visible')
+        .type(neighborhood);
+    }
+    if (street) {
+      cy.get('[data-cy="input-signup-address-street"]')
+        .should('be.visible')
+        .type(street);
+    }
+    if (number) {
+      cy.get('[data-cy="input-signup-address-number"]')
+        .should('be.visible')
+        .type(number);
+    }
+    if (complement) {
+      cy.get('[data-cy="input-signup-address-complement"]')
+        .should('be.visible')
+        .type(complement);
+    }
   }
 }
 
-export default WikipediaPage;
+export { CadastroPage };
 ```
 
 ## Formatação de Código
@@ -192,4 +295,3 @@ Para garantir a consistência do código, utilize o Prettier:
 ```bash
 npm run prettier
 ```
-
